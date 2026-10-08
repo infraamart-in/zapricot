@@ -1,0 +1,49 @@
+/*
+ * Home-page preloader: critical CSS, inlined into the prerendered index.html by
+ * scripts/prerender.mjs so the black screen and logo are there on the very first paint.
+ * The controller is src/loader/loader.ts.
+ */
+html[data-loading],
+html[data-loading] body { overflow: hidden; background: #000; }
+
+#zap-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  background: #000;
+  transition: opacity 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* failsafe if the app script never runs: get out of the way after 8s */
+  animation: zl-gone 600ms ease 8s forwards;
+}
+#zap-loader.is-out { opacity: 0; pointer-events: none; }
+
+#zap-loader img {
+  display: block;
+  width: 160px;
+  height: auto;
+  animation: zl-breathe 2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@media (min-width: 768px) {
+  #zap-loader img { width: 220px; }
+}
+@keyframes zl-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@keyframes zl-gone { to { opacity: 0; visibility: hidden; } }
+
+/* the hero's entrance (headline, subtext, navbar) waits for the loader to start fading */
+html[data-loading] .nav,
+html[data-loading] .hero,
+html[data-loading] .hero * { animation-play-state: paused !important; }
+
+/* behind the overlay the live scene replaces the poster still instantly (no half-faded state) */
+html[data-loading] .scene,
+html[data-loading] .scene-poster { transition: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  #zap-loader img { animation: none; opacity: 1; will-change: auto; }
+}

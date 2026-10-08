@@ -5,6 +5,7 @@ import { Environment, Lightformer } from '@react-three/drei'
 import { Card, useCardMaterials, useReflectionMaterials, type CardMaterials } from './Card'
 import { CARD_3D } from '../cardSpec'
 import type { FinishId } from '../config'
+import { loaderHolding, useLoaderHolding } from '../loader/loader'
 
 const ORDER: FinishId[] = ['gold', 'graphite', 'copper', 'titanium', 'midnight']
 const PITCH = THREE.MathUtils.degToRad(9) // camera looks down ~9°
@@ -118,7 +119,15 @@ function Ring({ reduced, onReady }: { reduced: boolean; onReady: () => void }) {
     scene.fog = new THREE.Fog('#0b0b0c', layout.fogNear, layout.fogFar)
   }, [scene, layout.fogNear, layout.fogFar])
 
-  useEffect(() => onReady(), [onReady])
+  // draw the warm-up frames (environment bake, shader compile, texture upload) even while the
+  // canvas renders on demand behind the preloader
+  const invalidate = useThree((st) => st.invalidate)
+  useEffect(() => {
+    invalidate()
+    const raf = requestAnimationFrame(() => invalidate())
+    onReady()
+    return () => cancelAnimationFrame(raf)
+  }, [onReady, invalidate])
 
   // Tell the DOM where the front card's top edge lands, so the headline can centre above it
   useLayoutEffect(() => {
@@ -172,7 +181,9 @@ function Ring({ reduced, onReady }: { reduced: boolean; onReady: () => void }) {
   )
 
   useFrame((three, dt) => {
-    const d = Math.min(dt, 1 / 30)
+    // behind the preloader the scene renders (shaders, textures warm) but time stands still,
+    // so the intro starts the moment the overlay begins to fade
+    const d = loaderHolding() ? 0 : Math.min(dt, 1 / 30)
     const s = st.current
     // intro: rise from below + a spin-up that settles into the slow cruise (~1.6s)
     s.intro = Math.min(1, s.intro + d / 1.6)
@@ -247,13 +258,15 @@ function Ring({ reduced, onReady }: { reduced: boolean; onReady: () => void }) {
 type SceneProps = { reduced: boolean; onReady: () => void; onFail: () => void; active: boolean }
 
 export default function Scene({ reduced, onReady, onFail, active }: SceneProps) {
+  // behind the opaque preloader only the warm-up frames are drawn (on demand), not 60 fps
+  const holding = useLoaderHolding()
   return (
     <Canvas
       className="scene-canvas"
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       camera={{ fov: 24, near: 0.1, far: 60 }}
-      frameloop={active ? 'always' : 'never'}
+      frameloop={!active ? 'never' : holding ? 'demand' : 'always'}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = 1.05

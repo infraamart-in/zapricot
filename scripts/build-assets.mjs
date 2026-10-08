@@ -39,6 +39,13 @@ for (const f of finishes) {
 const mark = await sharp(`${src}/mark.webp`).trim({ threshold: 10 }).toBuffer()
 const word = await sharp(`${src}/wordmark.webp`).trim({ threshold: 10 }).toBuffer()
 await sharp(word).resize({ height: 96 }).png().toFile(`${out}/img/wordmark.png`)
+// preloader logo (inlined into the home page HTML): white glyph, the detail lives in the alpha
+{
+  const logo = await sharp(word).resize({ width: 440 }).toBuffer()
+  const { width, height } = await sharp(logo).metadata()
+  const alpha = await sharp(logo).extractChannel(3).toBuffer()
+  await sharp({ create: { width, height, channels: 3, background: '#ffffff' } }).joinChannel(alpha).webp({ lossless: true, effort: 6 }).toFile(`${out}/img/loader-logo.webp`)
+}
 await sharp(mark).resize(256).png().toFile(`${out}/img/mark.png`)
 
 // Favicons: champagne mark on charcoal tile

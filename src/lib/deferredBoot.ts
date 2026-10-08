@@ -24,8 +24,9 @@ function boot() {
   )
 }
 if (typeof window !== 'undefined') {
-  // static captures (`?shot`) render the live scene straight away
-  if (new URLSearchParams(window.location.search).has('shot')) booted = true
+  // static captures (`?shot`) and the home preloader (it hides the page until the scene is
+  // ready) render the live scene straight away
+  if (new URLSearchParams(window.location.search).has('shot') || document.getElementById('zap-loader')) booted = true
   else {
     EVENTS.forEach((e) => window.addEventListener(e, boot, { capture: true, passive: true }))
     window.addEventListener('load', () => window.setTimeout(boot, IDLE_MS), { once: true })

@@ -12,6 +12,7 @@ import { usePrefs } from './lib/prefs'
 import { applyMeta } from './lib/seo'
 import { useDeferredBoot } from './lib/deferredBoot'
 import { PosterCanvas } from './components/PosterCanvas'
+import { signalHeroReady } from './loader/loader'
 
 const Scene = lazy(() => import('./three/Scene'))
 // dialogs are not part of the first paint: load on first open (prefetched when the browser is idle)
@@ -66,6 +67,17 @@ export default function App() {
     if (w.__openContact) setDialog('contact')
     else if (window.location.hash === '#early-access') setDialog('register')
   }, [])
+
+  // tell the home preloader the hero can play: two frames after the live scene is ready (first
+  // frames drawn with textures and shaders), or at once when the home page uses the 2D fallback
+  useEffect(() => {
+    if (!isHome) return
+    if (show3D && !sceneReady) return
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(signalHeroReady)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [isHome, show3D, sceneReady])
 
   const screen = path === '/product' ? 'screen--product' : SCROLLING.has(path) ? 'screen--about' : isHome ? 'screen--home' : ''
 

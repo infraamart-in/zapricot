@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import App from './App'
 import { drawPoster } from './components/PosterCanvas'
 import type { PreGesture } from './lib/stepInput'
+import { hasLoader, startLoader } from './loader/loader'
 import './styles.css'
 import './about.css'
 import './site.css'
@@ -14,6 +15,10 @@ if (openContact) {
   window.history.replaceState({}, '', '/')
   ;(window as Window & { __openContact?: boolean }).__openContact = true
 }
+
+// home-page preloader: start its clock/safety timer before anything else can go wrong
+const loader = hasLoader()
+if (loader) startLoader()
 
 const root = document.getElementById('root')!
 const app = (
@@ -65,8 +70,9 @@ if (!root.firstElementChild) {
       for (const t of ['wheel', 'touchstart', 'touchend', 'keydown']) window.removeEventListener(t, rec, true)
     }, 3000)
   }
-  // deep links (?finish=…, #early-access, /contact) change what's shown → hydrate straight away
-  if (openContact || window.location.hash || window.location.search) start()
+  // deep links (?finish=…, #early-access, /contact) change what's shown → hydrate straight away;
+  // behind the home preloader there is nothing to protect, so get the hero ready right away
+  if (loader || openContact || window.location.hash || window.location.search) start()
   else {
     EVENTS.forEach((e) => window.addEventListener(e, start, { capture: true, passive: true }))
     // no interaction yet: hydrate once the page has been quiet for a while
