@@ -1,10 +1,12 @@
 /**
- * Server-side core for POST /api/register. Pure Web-standard (Request → Response) so it runs on
- * Vercel functions, in the Vite dev server, and in unit tests. Nothing here is shipped to the browser.
+ * Server-side core for POST /api/register. Pure Web-standard (Request → Response) so it runs in
+ * the Express server (server.js), in the Vite dev server, and in unit tests. Nothing here is shipped to the browser.
  *
  * Pipeline: method/type/size/origin → JSON → allow-listed fields → sanitise + validate →
  * honeypot → time-to-submit → rate limit (per IP) → Turnstile → forward to Jotform.
- * Every failure returns a short generic message; details are only logged server-side.
+ * Every failure returns a short generic message; details are only logged server-side, as short
+ * non-secret reason codes (no user data, no keys): turnstile_failed, jotform_<status>,
+ * upstash_auth_failed, missing_env:<NAME>, rate_limited, invalid_input, ...
  */
 
 export type Env = {
@@ -14,11 +16,13 @@ export type Env = {
   SITE_URL?: string // e.g. https://zapricot.in  used to check the Origin header
   UPSTASH_REDIS_REST_URL?: string // optional: durable, cross-instance rate limiting
   UPSTASH_REDIS_REST_TOKEN?: string
-  NODE_ENV?: string
-  VERCEL_ENV?: string
+  NODE_ENV?: string // 'production' on the live server (server.js defaults it)
 }
 
-type Deps = { fetch: typeof fetch; now: () => number }
+type Deps = { fetch: typeof fetch; now: () => number; log?: (reason: string) => void }
+
+const defaultLog = (reason: string) => console.warn(`[register] ${reason}`)
+const say = (deps: Deps, reason: string) => (deps.log ?? defaultLog)(reason)
 
 const DEFAULT_FORM_ID = '262801925141048'
 const MAX_BODY = 4096
@@ -103,11 +107,17 @@ async function rateLimited(ip: string, env: Env, deps: Deps): Promise<boolean> {
         headers: { authorization: `Bearer ${env.UPSTASH_REDIS_REST_TOKEN}`, 'content-type': 'application/json' },
         body: JSON.stringify([['INCR', key], ['EXPIRE', key, Math.ceil(RATE_WINDOW_MS / 1000), 'NX']]),
       })
-      const out = (await res.json()) as { result: number }[]
-      return out[0].result > RATE_LIMIT
+      if (res.status === 401 || res.status === 403) say(deps, 'upstash_auth_failed')
+      else if (!res.ok) say(deps, `upstash_${res.status}`)
+      else {
+        const out = (await res.json()) as { result?: number; error?: string }[]
+        if (typeof out?.[0]?.result === 'number') return out[0].result > RATE_LIMIT
+        say(deps, 'upstash_bad_response')
+      }
     } catch {
-      // fall through to the in-memory limiter
+      say(deps, 'upstash_unreachable')
     }
+    // fall through to the in-memory limiter
   }
   // best effort per warm instance (sliding window)
   const hits = (memory.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
@@ -124,16 +134,27 @@ function clientIp(req: Request) {
 
 // ---- Turnstile ----------------------------------------------------------------------------
 async function turnstileOk(token: unknown, ip: string, env: Env, deps: Deps): Promise<boolean> {
-  const production = env.VERCEL_ENV === 'production' || env.NODE_ENV === 'production'
-  if (!env.TURNSTILE_SECRET_KEY) return !production // fail closed in production if not configured
-  if (typeof token !== 'string' || !token || token.length > 2048) return false
+  const production = env.NODE_ENV === 'production'
+  if (!env.TURNSTILE_SECRET_KEY) {
+    // fail closed in production if not configured
+    if (production) say(deps, 'missing_env:TURNSTILE_SECRET_KEY')
+    return !production
+  }
+  if (typeof token !== 'string' || !token || token.length > 2048) {
+    say(deps, 'turnstile_failed reason=missing_token')
+    return false
+  }
   const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token })
   if (ip !== 'unknown') form.set('remoteip', ip)
   try {
     const res = await deps.fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form })
-    const out = (await res.json()) as { success?: boolean }
-    return out.success === true
+    const out = (await res.json()) as { success?: boolean; 'error-codes'?: string[] }
+    if (out.success === true) return true
+    // Cloudflare's error codes are diagnostic, not secret (e.g. invalid-input-secret, timeout-or-duplicate)
+    say(deps, `turnstile_failed codes=${(out['error-codes'] ?? []).join(',') || 'none'}`)
+    return false
   } catch {
+    say(deps, 'turnstile_failed reason=unreachable')
     return false
   }
 }
@@ -183,8 +204,11 @@ async function forward(c: Clean, consentTime: string, env: Env, deps: Deps): Pro
   try {
     const res = await deps.fetch(url, { method: 'POST', body, redirect: 'manual' })
     // API: 200 JSON; public endpoint: 200 or a 30x to the thank-you page
-    return res.status < 400
+    if (res.status < 400) return true
+    say(deps, `jotform_${res.status}`)
+    return false
   } catch {
+    say(deps, 'jotform_unreachable')
     return false
   }
 }
@@ -205,10 +229,12 @@ export async function handleRegister(req: Request, env: Env, deps: Deps = { fetc
     const site = new URL(env.SITE_URL)
     allowed.add(`${site.protocol}//www.${site.host.replace(/^www\./, '')}`)
     allowed.add(`${site.protocol}//${site.host.replace(/^www\./, '')}`)
-    const isPreview = env.VERCEL_ENV === 'preview' && origin.endsWith('.vercel.app')
-    const production = env.VERCEL_ENV === 'production' || env.NODE_ENV === 'production'
+    const production = env.NODE_ENV === 'production'
     const isLocal = !production && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
-    if (!allowed.has(origin) && !isPreview && !isLocal) return json(403, { error: MSG.invalid })
+    if (!allowed.has(origin) && !isLocal) {
+      say(deps, 'origin_rejected')
+      return json(403, { error: MSG.invalid })
+    }
   }
 
   const raw = await req.text()
@@ -224,23 +250,28 @@ export async function handleRegister(req: Request, env: Env, deps: Deps = { fetc
   if (Object.keys(body).some((k) => !ALLOWED.has(k))) return json(400, { error: MSG.invalid })
 
   const ip = clientIp(req)
-  if (await rateLimited(ip, env, deps)) return json(429, { error: MSG.rate }, { 'retry-after': '600' })
+  if (await rateLimited(ip, env, deps)) {
+    say(deps, 'rate_limited')
+    return json(429, { error: MSG.rate }, { 'retry-after': '600' })
+  }
 
   const data = validate(body)
-  if (!data) return json(400, { error: MSG.invalid })
+  if (!data) {
+    say(deps, 'invalid_input')
+    return json(400, { error: MSG.invalid })
+  }
 
   // bots: filled the hidden field, or submitted impossibly fast / stale. Pretend success.
   const elapsed = typeof body.elapsedMs === 'number' ? body.elapsedMs : -1
   if ((typeof body.company === 'string' && body.company.trim() !== '') || elapsed < MIN_FILL_MS || elapsed > MAX_FILL_MS) {
+    say(deps, 'bot_filtered')
     return json(200, { ok: true })
   }
 
   if (!(await turnstileOk(body.turnstileToken, ip, env, deps))) return json(400, { error: MSG.invalid })
 
   const ok = await forward(data, new Date(deps.now()).toISOString(), env, deps)
-  if (!ok) {
-    console.error('[register] forwarding to Jotform failed')
-    return json(502, { error: MSG.failed })
-  }
+  if (!ok) return json(502, { error: MSG.failed }) // reason already logged (jotform_<status>)
+  say(deps, 'ok')
   return json(200, { ok: true })
 }

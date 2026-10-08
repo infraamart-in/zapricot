@@ -32,3 +32,6 @@ assets/
 assets-src/
 *.mp4
 *.mov
+
+# compiled server handler (built by `npm run build`)
+server-dist/

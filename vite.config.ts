@@ -1,14 +1,14 @@
-import { defineConfig, loadEnv, type Plugin, type ViteDevServer, type PreviewServer } from 'vite'
+import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 const ROUTES = ['/', '/product', '/about', '/privacy', '/terms']
 const NL = String.fromCharCode(10)
 
-/** Runs /api/register locally (dev + preview). Dry-run by default so local tests never reach Jotform. */
+/** Runs /api/register in the Vite dev server. Dry-run by default so local tests never reach Jotform.
+ * Production (and `npm run start:local`) use server.js instead. */
 function apiRoutes(env: Record<string, string>): Plugin {
   const handle = (load: () => Promise<Record<string, unknown>>) => async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (!req.url?.startsWith('/api/register')) return next()
@@ -47,28 +47,6 @@ function apiRoutes(env: Record<string, string>): Plugin {
     configureServer(server: ViteDevServer) {
       server.middlewares.use(handle(() => server.ssrLoadModule('/server/register.ts')))
     },
-    configurePreviewServer(server: PreviewServer) {
-      // apply the production security headers from vercel.json, so CSP is exercised locally
-      const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'))
-      const global = vercel.headers.find((h: { source: string }) => h.source === '/(.*)').headers as { key: string; value: string }[]
-      server.middlewares.use((_req, res, next) => {
-        for (const h of global) if (h.key !== 'Strict-Transport-Security') res.setHeader(h.key, h.value.replace('; upgrade-insecure-requests', ''))
-        next()
-      })
-      server.middlewares.use(handle(async () => import(/* @vite-ignore */ pathToFileURL(path.resolve('server/register.ts')).href)))
-      // mirror Vercel: /contact → home, unknown pages → dist/404.html with a real 404 status
-      server.middlewares.use((req, res, next) => {
-        const url = (req.url ?? '/').split('?')[0].replace(/\/+$/, '') || '/'
-        if (req.method !== 'GET' || url.startsWith('/api/') || path.extname(url)) return next()
-        if (url === '/contact') req.url = '/'
-        else if (!ROUTES.includes(url)) {
-          res.statusCode = 404
-          res.setHeader('content-type', 'text/html; charset=utf-8')
-          return res.end(fs.readFileSync(path.resolve('dist/404.html')))
-        }
-        next()
-      })
-    },
   }
 }
 
@@ -104,7 +82,7 @@ ${urls}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  // TODO(domain): set SITE_URL in Vercel (Production) to the real canonical origin
+  // SITE_URL (host env var) is the canonical origin baked into canonical/OG URLs, robots.txt, sitemap.xml
   const siteUrl = (env.SITE_URL || 'https://zapricot.in').replace(/\/+$/, '')
   return {
     plugins: [react(), apiRoutes(env), seoFiles(siteUrl)],

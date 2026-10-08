@@ -10,7 +10,12 @@ declare global {
   }
 }
 
-export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined
+// Site key: injected at runtime by server.js as <meta name="zap-turnstile-site-key"> (so it works even
+// when the host doesn't expose env vars to the build), else the build-time VITE_ value.
+export const TURNSTILE_SITE_KEY: string | undefined =
+  (typeof document !== 'undefined' && document.querySelector<HTMLMetaElement>('meta[name="zap-turnstile-site-key"]')?.content) ||
+  (import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined) ||
+  undefined
 const SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
 let loading: Promise<void> | null = null

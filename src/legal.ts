@@ -7,7 +7,7 @@ export const LEGAL = {
   entity: "<LEGAL ENTITY NAME or 'Zapricot (founders Naveen Panya and Chetan Dora)'>",
   location: 'Hyderabad, Telangana, India',
   email: 'zapricot.india@gmail.com',
-  hosting: '<Vercel>',
+  hosting: '<Hostinger>',
   retention: '<24 months>',
   responseTime: '<30 days>',
   grievanceOfficer: '<NAME>',

@@ -11,8 +11,9 @@ const fakeFetch = (async (url: string | URL, init?: RequestInit) => {
   if (u.includes('jotform')) return new Response('{}', { status: 200 })
   throw new Error('unexpected fetch ' + u)
 }) as typeof fetch
-const deps = { fetch: fakeFetch, now: () => t }
-const env: Env = { TURNSTILE_SECRET_KEY: 'secret', SITE_URL: 'https://zapricot.in', VERCEL_ENV: 'production' }
+const logs: string[] = []
+const deps = { fetch: fakeFetch, now: () => t, log: (r: string) => logs.push(r) }
+const env: Env = { TURNSTILE_SECRET_KEY: 'secret', SITE_URL: 'https://zapricot.in', NODE_ENV: 'production' }
 
 const good = { name: 'Asha Rao', email: 'asha@example.com', phone: '98765 43210', city: 'Hyderabad', car: 'Tata Nexon EV', consent: true, company: '', elapsedMs: 9000, turnstileToken: 'good' }
 const req = (body: unknown, headers: Record<string, string> = {}, method = 'POST') =>
@@ -24,6 +25,7 @@ const req = (body: unknown, headers: Record<string, string> = {}, method = 'POST
 const run = async (name: string, fn: () => Promise<void>) => {
   resetRateLimit()
   calls.length = 0
+  logs.length = 0
   try {
     await fn()
     console.log('PASS ', name)
@@ -115,7 +117,7 @@ await run('Turnstile token is verified server-side; bad/missing token rejected',
   assert.equal((await handleRegister(req({ ...good, turnstileToken: undefined }), env, deps)).status, 400)
 })
 await run('production without a Turnstile secret fails closed', async () => {
-  assert.equal((await handleRegister(req(good), { SITE_URL: env.SITE_URL, VERCEL_ENV: 'production' }, deps)).status, 400)
+  assert.equal((await handleRegister(req(good), { SITE_URL: env.SITE_URL, NODE_ENV: 'production' }, deps)).status, 400)
 })
 await run('rate limit: 5 per 10 minutes per IP, then 429; window resets', async () => {
   for (let i = 0; i < 5; i++) assert.equal((await handleRegister(req(good, { ip: '9.9.9.9' }), env, deps)).status, 200, 'attempt ' + (i + 1))
@@ -128,6 +130,34 @@ await run('rate limit: 5 per 10 minutes per IP, then 429; window resets', async 
 })
 await run('localhost origin allowed only outside production', async () => {
   const local = { origin: 'http://localhost:5173' }
-  assert.equal((await handleRegister(req(good, local), { ...env, VERCEL_ENV: undefined, NODE_ENV: 'development', TURNSTILE_SECRET_KEY: 'secret' }, deps)).status, 200)
+  assert.equal((await handleRegister(req(good, local), { ...env, NODE_ENV: 'development', TURNSTILE_SECRET_KEY: 'secret' }, deps)).status, 200)
   assert.equal((await handleRegister(req(good, local), env, deps)).status, 403)
+})
+
+// ---- logged failure reasons (non-secret codes, visible in the host's runtime logs) --------------
+const withFetch = (f: (u: string, init?: RequestInit) => Response | Promise<Response>) => ({ ...deps, fetch: (async (u: string | URL, i?: RequestInit) => f(String(u), i)) as typeof fetch })
+await run('logs turnstile_failed with Cloudflare error codes', async () => {
+  const d = withFetch((u) => (u.includes('siteverify') ? new Response(JSON.stringify({ success: false, 'error-codes': ['invalid-input-secret'] })) : new Response('{}')))
+  assert.equal((await handleRegister(req(good), env, d)).status, 400)
+  assert.deepEqual(logs, ['turnstile_failed codes=invalid-input-secret'])
+})
+await run('logs jotform_<status> and returns 502', async () => {
+  const d = withFetch((u) => (u.includes('siteverify') ? new Response('{"success":true}') : new Response('{}', { status: 401 })))
+  assert.equal((await handleRegister(req(good), { ...env, JOTFORM_API_KEY: 'k' }, d)).status, 502)
+  assert.deepEqual(logs, ['jotform_401'])
+})
+await run('logs upstash_auth_failed and falls back to the in-memory limiter', async () => {
+  const d = withFetch((u) => (u.includes('upstash') ? new Response('{"error":"WRONGPASS"}', { status: 401 }) : u.includes('siteverify') ? new Response('{"success":true}') : new Response('{}')))
+  const res = await handleRegister(req(good), { ...env, UPSTASH_REDIS_REST_URL: 'https://x.upstash.io', UPSTASH_REDIS_REST_TOKEN: 'bad' }, d)
+  assert.equal(res.status, 200)
+  assert.deepEqual(logs, ['upstash_auth_failed', 'ok'])
+})
+await run('logs missing_env:TURNSTILE_SECRET_KEY in production', async () => {
+  await handleRegister(req(good), { SITE_URL: env.SITE_URL, NODE_ENV: 'production' }, deps)
+  assert.deepEqual(logs, ['missing_env:TURNSTILE_SECRET_KEY'])
+})
+await run('log lines never contain user data or keys', async () => {
+  await handleRegister(req(good), { ...env, JOTFORM_API_KEY: 'k3y' }, deps)
+  const all = logs.join(' ')
+  for (const v of ['Asha', 'asha@example.com', '98765', 'Hyderabad', 'k3y', 'secret']) assert.ok(!all.includes(v), v)
 })
