@@ -1,0 +1,51 @@
+{
+  "about-hero": {
+    "widths": [
+      800,
+      1366
+    ],
+    "width": 1366,
+    "height": 784,
+    "standIn": true
+  },
+  "about-vision-grid": {
+    "widths": [
+      800,
+      1400,
+      1444
+    ],
+    "width": 1444,
+    "height": 2000,
+    "standIn": false
+  },
+  "about-building": {
+    "widths": [
+      800,
+      1400,
+      1511
+    ],
+    "width": 1511,
+    "height": 2000,
+    "standIn": true
+  },
+  "about-origin": {
+    "widths": [
+      800,
+      1400,
+      1601
+    ],
+    "width": 1601,
+    "height": 2000,
+    "standIn": true
+  },
+  "about-partners": {
+    "widths": [
+      800,
+      1400,
+      2000
+    ],
+    "width": 2000,
+    "height": 1116,
+    "standIn": false
+  }
+}
