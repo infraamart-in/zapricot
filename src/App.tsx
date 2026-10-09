@@ -15,10 +15,8 @@ import { PosterCanvas } from './components/PosterCanvas'
 import { signalHeroReady } from './loader/loader'
 
 const Scene = lazy(() => import('./three/Scene'))
-// dialogs are not part of the first paint: load on first open (prefetched when the browser is idle)
-const loadRegister = () => import('./components/RegisterModal')
+// the Contact dialog is not part of the first paint: load on first open (prefetched when idle)
 const loadContact = () => import('./components/ContactDialog')
-const RegisterModal = lazy(() => loadRegister().then((m) => ({ default: m.RegisterModal })))
 const ContactDialog = lazy(() => loadContact().then((m) => ({ default: m.ContactDialog })))
 
 /** Routes that scroll like documents; everything else is one fixed screen. */
@@ -32,23 +30,21 @@ export default function App() {
   const boot = useDeferredBoot()
   const [sceneReady, setSceneReady] = useState(false)
   const [sceneFailed, setSceneFailed] = useState(false)
-  // one dialog at a time: opening one closes the other
-  const [dialog, setDialog] = useState<null | 'register' | 'contact'>(null)
-  const closeDialog = useCallback(() => setDialog(null), [])
-  // a dialog stays mounted after its first open (so its close animation and state survive)
-  const [mounted, setMounted] = useState({ register: false, contact: false })
+  const [contactOpen, setContactOpen] = useState(false)
+  const closeContact = useCallback(() => setContactOpen(false), [])
+  // the dialog stays mounted after its first open (so its close animation and state survive)
+  const [contactMounted, setContactMounted] = useState(false)
   useEffect(() => {
-    if (dialog) setMounted((m) => (m[dialog] ? m : { ...m, [dialog]: true }))
-  }, [dialog])
+    if (contactOpen) setContactMounted(true)
+  }, [contactOpen])
   useEffect(() => {
     const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback
     const idle = (cb: () => void) => (ric ? ric(cb, { timeout: 4000 }) : window.setTimeout(cb, 2500))
     idle(() => {
-      loadRegister()
       loadContact()
     })
   }, [])
-  const openContact = useCallback(() => setDialog('contact'), [])
+  const openContact = useCallback(() => setContactOpen(true), [])
   const onReady = useCallback(() => setSceneReady(true), [])
   const onFail = useCallback(() => setSceneFailed(true), [])
   const isHome = path === '/'
@@ -61,11 +57,9 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [path])
 
-  // deep links that open a dialog: /contact (rewritten to home, see main.tsx) and #early-access
+  // deep link that opens the Contact dialog: /contact (rewritten to home, see main.tsx)
   useEffect(() => {
-    const w = window as Window & { __openContact?: boolean }
-    if (w.__openContact) setDialog('contact')
-    else if (window.location.hash === '#early-access') setDialog('register')
+    if ((window as Window & { __openContact?: boolean }).__openContact) setContactOpen(true)
   }, [])
 
   // tell the home preloader the hero can play: two frames after the live scene is ready (first
@@ -87,7 +81,7 @@ export default function App() {
       <div className="grain" aria-hidden />
       {/* separate Suspense boundaries = separately hydrated chunks (React yields between them) */}
       <Suspense fallback={null}>
-        <Nav onEarlyAccess={() => setDialog('register')} onContact={openContact} contactOpen={dialog === 'contact'} />
+        <Nav onContact={openContact} contactOpen={contactOpen} />
       </Suspense>
 
       {isHome && show3D && (
@@ -127,8 +121,7 @@ export default function App() {
       <Suspense fallback={null}>{(isHome || path === '/product' || notFound) && <LegalBar />}</Suspense>
 
       <Suspense fallback={null}>
-        {mounted.register && <RegisterModal open={dialog === 'register'} onClose={closeDialog} />}
-        {mounted.contact && <ContactDialog open={dialog === 'contact'} onClose={closeDialog} />}
+        {contactMounted && <ContactDialog open={contactOpen} onClose={closeContact} />}
       </Suspense>
     </div>
   )

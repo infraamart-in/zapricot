@@ -160,6 +160,7 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
 .nav__right { justify-self: end; display: flex; align-items: center; gap: 10px; }
 
 .pill {
+  text-decoration: none; /* the navbar Early access link */
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -359,6 +360,7 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
 .btn {
   position: relative;
   display: inline-flex;
+  text-decoration: none; /* also used on links (menu Early access) */
   align-items: center;
   justify-content: center;
   gap: 10px;
@@ -385,28 +387,11 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
 }
 .btn:active { transform: scale(0.97); }
 .btn:disabled { cursor: progress; }
-.btn--sm { height: 46px; padding: 0 24px; font-size: 14px; }
 @media (hover: hover) and (pointer: fine) { .btn:hover::after { transform: translateX(120%); } }
-.btn__spinner {
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.6px solid rgba(23, 19, 13, 0.25);
-  border-top-color: #17130d;
-  opacity: 0;
-  animation: spin 600ms linear infinite;
-}
-.btn__label { transition: opacity 150ms ease, filter 150ms ease; }
-.btn[data-loading='true'] .btn__label { opacity: 0; filter: blur(2px); }
-.btn[data-loading='true'] .btn__spinner { opacity: 1; }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-.link-btn { height: 46px; padding: 0 8px; font-size: 14px; color: var(--ink-2); transition: color 200ms ease; }
-@media (hover: hover) and (pointer: fine) { .link-btn:hover { color: var(--ink); } }
 
 /* =========================================================
-   Register modal
+   Modal shell (Contact dialog)
    ========================================================= */
 .modal {
   width: 100%;
@@ -446,12 +431,6 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
 @keyframes fade-out { to { opacity: 0; } }
 
 .modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.steps { display: flex; align-items: center; gap: 14px; }
-.steps__count { font-size: 11px; letter-spacing: 0.22em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.steps__now { color: var(--gold); }
-.steps__bar { display: flex; gap: 4px; }
-.steps__bar span { width: 22px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); transition: background-color 300ms ease; }
-.steps__bar span[data-on='true'] { background: var(--gold); }
 .modal__close {
   width: 34px; height: 34px;
   display: grid; place-items: center;
@@ -463,16 +442,6 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
 .modal__close:active { transform: scale(0.94); }
 @media (hover: hover) and (pointer: fine) { .modal__close:hover { color: var(--ink); background: rgba(255, 255, 255, 0.05); } }
 
-.modal__form { margin: 0; }
-.track {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 100%;
-  transform: translateX(calc(var(--step) * -100%));
-  transition: transform 520ms var(--ease-drawer);
-}
-.pane { min-width: 0; margin: 0; padding: 0 2px; border: 0; transition: opacity 400ms ease; }
-.pane[aria-hidden='true'] { opacity: 0; }
 .pane__title {
   padding: 0;
   margin: 0;
@@ -482,86 +451,6 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
-.pane__sub { margin: 6px 0 20px; font-size: 14px; color: var(--ink-2); }
-
-.field { margin-bottom: 4px; }
-.field__label { display: block; margin-bottom: 7px; font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
-.field__input {
-  width: 100%;
-  height: 48px;
-  padding: 0 16px;
-  border-radius: 14px;
-  border: 0;
-  outline: none;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  color: var(--ink);
-  font: inherit;
-  font-size: 16px; /* ≥16px: no iOS zoom on focus */
-  transition: box-shadow 200ms ease, background-color 200ms ease;
-}
-.field__input::placeholder { color: #8a8680; } /* ≥4.5:1 on the dialog panel */
-.field__input:focus { background: rgba(255, 255, 255, 0.06); box-shadow: inset 0 0 0 1px rgba(226, 196, 140, 0.6), 0 0 0 4px rgba(226, 196, 140, 0.08); }
-.field[data-invalid='true'] .field__input { box-shadow: inset 0 0 0 1px rgba(232, 160, 138, 0.7); }
-.field__error { min-height: 18px; margin: 5px 2px 6px; font-size: 12px; color: var(--danger); }
-.field__affix { position: relative; }
-.field__affix > span { position: absolute; left: 16px; top: 50%; translate: 0 -50%; font-size: 15px; color: var(--ink-3); pointer-events: none; }
-.field__affix .field__input { padding-left: 52px; }
-
-.combo { position: relative; }
-.combo__list {
-  position: absolute;
-  z-index: 5;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  max-height: 188px;
-  overflow: auto;
-  margin: 0;
-  padding: 6px;
-  list-style: none;
-  border-radius: 14px;
-  background: #1c1b1e;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 40px -10px rgba(0, 0, 0, 0.8);
-  opacity: 0;
-  transform: translateY(-4px) scale(0.98);
-  transform-origin: 50% 0;
-  pointer-events: none;
-  transition: opacity 150ms ease-out, transform 150ms var(--ease-out);
-}
-.combo__list[data-open='true'] { opacity: 1; transform: none; pointer-events: auto; }
-.combo__opt { padding: 9px 12px; border-radius: 9px; font-size: 14px; color: var(--ink-2); cursor: pointer; }
-.combo__opt[aria-selected='true'] { background: rgba(226, 196, 140, 0.12); color: var(--ink); }
-
-.form-error { margin: 4px 0 0; font-size: 13px; color: var(--danger); }
-.form-error a { color: var(--gold); }
-
-.modal__foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 10px; }
-.modal__foot[data-step='0'] .btn, .modal__foot[data-step='2'] .btn { flex: 1; }
-.modal__foot[data-step='1'] .btn { flex: 1; }
-.modal__fallback { margin: 14px 0 0; text-align: center; font-size: 12px; color: var(--ink-3); }
-.modal__fallback a { color: var(--ink-2); }
-
-.pane--done { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-top: 6px; }
-.done__card { position: relative; width: 78%; margin: 4px 0 26px; }
-.done__card img { position: relative; width: 100%; filter: drop-shadow(0 26px 30px rgba(0, 0, 0, 0.75)); }
-.done__glow {
-  position: absolute;
-  left: 50%;
-  bottom: -26%;
-  width: 130%;
-  height: 60%;
-  translate: -50% 0;
-  background: radial-gradient(closest-side, rgba(232, 186, 118, 0.42), transparent);
-  filter: blur(6px);
-}
-.done__card[data-show='true'] img { animation: drop-in 900ms var(--ease-drawer) 260ms both, bob 5s ease-in-out 1.4s infinite; }
-.done__card[data-show='true'] .done__glow { animation: glow-in 900ms ease 500ms both; }
-@keyframes drop-in { from { opacity: 0; transform: translateY(-46px) rotate(-7deg) scale(0.96); } }
-@keyframes glow-in { from { opacity: 0; transform: scale(0.7); } }
-@keyframes bob { 50% { translate: 0 -6px; } }
-.done__title { font-size: 34px; }
-
 /* =========================================================
    Laptop / ultrawide tweaks
    ========================================================= */
@@ -636,9 +525,7 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
   .grain { animation: none; }
   .reveal, .hero .accent { animation: fade 500ms ease both; }
   .ring-fallback img, .pill__dot { animation: none; }
-  .track { transition-duration: 1ms; }
   .modal__panel, .modal[data-closing='true'] .modal__panel { animation-name: fade; }
-  .done__card[data-show='true'] img { animation: fade 500ms ease both; }
 }
 
 /* =========================================================
@@ -861,7 +748,7 @@ a { color: inherit; -webkit-tap-highlight-color: transparent; }
 }
 
 /* =========================================================
-   Contact dialog (shares the .modal shell with Early access)
+   Contact dialog
    ========================================================= */
 .modal--contact .modal__panel { padding-bottom: 14px; }
 .modal--contact .modal__head { margin-bottom: 4px; }

@@ -47,26 +47,22 @@ export function Privacy({ onContact }: { onContact: () => void }) {
 
       <h2>2. What we collect</h2>
       <p>
-        Only what you enter in the Early access form: your name, email, mobile number, city and car model, plus a record that you gave consent (a yes and the time
-        you gave it). We also keep what you send us by email.
+        Only what you enter in our Early access form (a Google Form): <V v={LEGAL.formFields} />. We also keep what you send us by email.
       </p>
-      <p>
-        We don&rsquo;t collect payment details, government IDs or your precise location. To keep the form free of spam, your IP address is checked briefly by our
-        spam-protection and rate-limiting tools; we don&rsquo;t store it with your registration.
-      </p>
+      <p>We don&rsquo;t collect payment details, government IDs or your precise location.</p>
 
       <h2>3. Why</h2>
       <p>Only to contact you about early access and zapricot updates. We don&rsquo;t sell or rent your data.</p>
 
       <h2>4. Consent</h2>
       <p>
-        We rely on the consent you give by ticking the box on the form. You can withdraw it anytime by emailing <Mail />. Withdrawing doesn&rsquo;t affect anything we
-        did before you withdrew.
+        We rely on the consent you give by submitting the form. You can withdraw it anytime by emailing <Mail />. Withdrawing doesn&rsquo;t affect anything we did
+        before you withdrew.
       </p>
 
       <h2>5. Who processes it</h2>
       <p>
-        Jotform (form submissions), <V v={LEGAL.hosting} /> (hosting) and Cloudflare Turnstile (spam protection), only to provide those services to us.
+        Google (Google Forms, which hosts the Early access form) and <V v={LEGAL.hosting} /> (website hosting), only to provide those services to us.
       </p>
 
       <h2>6. How long we keep it</h2>

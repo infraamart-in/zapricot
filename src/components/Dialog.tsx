@@ -13,7 +13,7 @@ type Props = {
 const EXIT_MS = 200
 
 /**
- * Shared modal shell (Early access, Contact): native <dialog> for the top layer, focus trap
+ * Modal shell (Contact dialog): native <dialog> for the top layer, focus trap
  * and Esc; one panel style, backdrop and enter/exit animation. Open state is owned by the
  * parent, so opening one dialog simply closes the other. Focus returns to the opener.
  */

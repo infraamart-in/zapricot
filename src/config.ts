@@ -7,11 +7,8 @@ export const CONTACT = {
   location: 'Hyderabad, Telangana, India',
 }
 
-export const JOTFORM = {
-  formId: '262801925141048',
-  // public hosted form, offered as a fallback link only; submissions go through /api/register
-  hostedUrl: 'https://form.jotform.com/262801925141048',
-}
+/** Early access sign-up (Google Form). Every "Early access" link opens it in a new tab. */
+export const EARLY_ACCESS_URL = 'https://forms.gle/yuqt18titG8Y3pSC7'
 
 export type FinishId = 'graphite' | 'titanium' | 'gold' | 'copper' | 'midnight'
 

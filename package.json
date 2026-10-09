@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && tsc -p tsconfig.server.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
     "start": "node server.js",
     "start:local": "node --env-file=.env.local server.js",
     "assets": "node scripts/build-assets.mjs",
     "assets:about": "node scripts/build-about.mjs",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
-    "test": "node server/register.test.mts"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",

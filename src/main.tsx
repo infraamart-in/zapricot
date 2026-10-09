@@ -4,6 +4,7 @@ import App from './App'
 import { drawPoster } from './components/PosterCanvas'
 import type { PreGesture } from './lib/stepInput'
 import { hasLoader, startLoader } from './loader/loader'
+import { EARLY_ACCESS_URL } from './config'
 import './styles.css'
 import './about.css'
 import './site.css'
@@ -15,6 +16,9 @@ if (openContact) {
   window.history.replaceState({}, '', '/')
   ;(window as Window & { __openContact?: boolean }).__openContact = true
 }
+
+// old early-access deep links (/#early-access) now go straight to the Google Form
+if (window.location.hash === '#early-access') window.location.replace(EARLY_ACCESS_URL)
 
 // home-page preloader: start its clock/safety timer before anything else can go wrong
 const loader = hasLoader()
@@ -70,7 +74,7 @@ if (!root.firstElementChild) {
       for (const t of ['wheel', 'touchstart', 'touchend', 'keydown']) window.removeEventListener(t, rec, true)
     }, 3000)
   }
-  // deep links (?finish=…, #early-access, /contact) change what's shown → hydrate straight away;
+  // deep links (?finish=…, /contact, any #hash) change what's shown → hydrate straight away;
   // behind the home preloader there is nothing to protect, so get the hero ready right away
   if (loader || openContact || window.location.hash || window.location.search) start()
   else {

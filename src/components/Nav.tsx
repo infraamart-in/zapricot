@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, usePath } from '../lib/router'
+import { EARLY_ACCESS_URL } from '../config'
 
 const LINKS = [
   { href: '/about', label: 'About' },
   { href: '/product', label: 'Product' },
 ]
 
-type Props = { onEarlyAccess: () => void; onContact: () => void; contactOpen: boolean }
+type Props = { onContact: () => void; contactOpen: boolean }
 
-export function Nav({ onEarlyAccess, onContact, contactOpen }: Props) {
+export function Nav({ onContact, contactOpen }: Props) {
   const path = usePath()
   const [open, setOpen] = useState(false)
   const menuBtn = useRef<HTMLButtonElement>(null)
@@ -74,10 +75,10 @@ export function Nav({ onEarlyAccess, onContact, contactOpen }: Props) {
       </nav>
 
       <div className="nav__right">
-        <button className="pill" onClick={onEarlyAccess} aria-haspopup="dialog">
+        <a className="pill" href={EARLY_ACCESS_URL} target="_blank" rel="noopener noreferrer">
           <span className="pill__dot" aria-hidden />
           Early access
-        </button>
+        </a>
         <button
           ref={menuBtn}
           className="nav__menu"
@@ -113,10 +114,10 @@ export function Nav({ onEarlyAccess, onContact, contactOpen }: Props) {
             Contact
           </button>
         </nav>
-        <button className="btn menu__cta" aria-haspopup="dialog" onClick={closeThen(onEarlyAccess)} style={{ ['--i' as string]: 3 }}>
+        <a className="btn menu__cta" href={EARLY_ACCESS_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} style={{ ['--i' as string]: 3 }}>
           Early access
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden><path d="M3 7h8m0 0L7.5 3.5M11 7l-3.5 3.5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </button>
+        </a>
       </div>,
         document.body,
       )}

@@ -8,6 +8,7 @@ export const LEGAL = {
   location: 'Hyderabad, Telangana, India',
   email: 'zapricot.india@gmail.com',
   hosting: '<Hostinger>',
+  formFields: '<FIELDS IN THE GOOGLE FORM, e.g. your name, email, mobile number, city and car model>',
   retention: '<24 months>',
   responseTime: '<30 days>',
   grievanceOfficer: '<NAME>',
