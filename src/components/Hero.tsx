@@ -20,7 +20,7 @@ export function Hero() {
           <span className="line"><span className="reveal" style={{ ['--d' as string]: '0ms' }}>One card for</span></span>
           <span className="line"><span className="reveal accent" style={{ ['--d' as string]: '90ms' }}>every EV charger.</span></span>
         </h1>
-        <p className="hero__sub reveal" style={{ ['--d' as string]: '200ms' }}>One tap. Coming soon.</p>
+        <p className="hero__sub reveal" style={{ ['--d' as string]: '200ms' }}>Launching soon</p>
       </div>
     </section>
   )
